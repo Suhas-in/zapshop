@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZapShop — Sign In</title>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050811;
+  --gold: #f5c842;
+  --orange: #ff6b35;
+  --pink: #ff3fa4;
+  --teal: #00e5cc;
+  --dark: #0a0f1e;
+  --card: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.08);
+  --text: #f0f4ff;
+  --muted: #8892a4;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { height:100%; overflow:hidden; }
+body {
+  font-family:'Cabinet Grotesk',sans-serif;
+  background:var(--bg); color:var(--text);
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* ── 3D CANVAS ── */
+#canvas3d {
+  position:fixed; inset:0; z-index:0;
+  pointer-events:none;
+}
+
+/* ── GRAIN ── */
+body::after {
+  content:'';
+  position:fixed; inset:0; z-index:1;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity:0.4; pointer-events:none;
+}
+
+/* ── MAIN CARD ── */
+.auth-wrap {
+  position:relative; z-index:10;
+  width:100%; max-width:440px;
+  margin:0 1rem;
+  animation:cardRise 0.8s cubic-bezier(0.34,1.2,0.64,1) both;
+}
+@keyframes cardRise {
+  from { opacity:0; transform:translateY(60px) scale(0.92); }
+  to   { opacity:1; transform:none; }
+}
+
+.auth-card {
+  background:linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:28px;
+  padding:2.5rem 2.5rem 2rem;
+  backdrop-filter:blur(30px);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.05),
+    0 40px 80px rgba(0,0,0,0.5),
+    0 0 120px rgba(245,200,66,0.06),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+/* ── LOGO ── */
+.logo {
+  text-align:center; margin-bottom:1.8rem;
+}
+.logo-icon {
+  width:56px; height:56px;
+  background:linear-gradient(135deg,var(--gold),var(--orange));
+  border-radius:16px;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:1.8rem;
+  box-shadow:0 8px 32px rgba(245,200,66,0.35);
+  margin-bottom:0.75rem;
+  animation:iconPulse 3s ease-in-out infinite;
+}
+@keyframes iconPulse {
+  0%,100% { box-shadow:0 8px 32px rgba(245,200,66,0.35); }
+  50%     { box-shadow:0 8px 48px rgba(245,200,66,0.6); }
+}
+.logo h1 {
+  font-family:'Clash Display',sans-serif;
+  font-size:1.7rem; font-weight:700; letter-spacing:-0.5px;
+  background:linear-gradient(135deg,#fff 30%,var(--gold));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.logo p { font-size:0.82rem; color:var(--muted); margin-top:0.2rem; }
+
+/* ── TABS ── */
+.tabs {
+  display:flex; gap:0.4rem;
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--border);
+  border-radius:14px; padding:0.3rem;
+  margin-bottom:1.8rem;
+}
+.tab {
+  flex:1; padding:0.6rem;
+  border:none; border-radius:10px;
+  font-family:'Cabinet Grotesk',sans-serif;
+  font-size:0.88rem; font-weight:700;
+  cursor:pointer; transition:all 0.25s;
+  color:var(--muted); background:transparent;
+}
+.tab.active {
+  background:linear-gradient(135deg,var(--gold),var(--orange));
+  color:#0a0f1e;
+  box-shadow:0 4px 16px rgba(245,200,66,0.3);
+}
+
+/* ── ROLE SELECTOR ── */
+.role-row {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:0.6rem; margin-bottom:1.2rem;
+}
+.role-btn {
+  padding:0.75rem; border-radius:12px;
+  border:1.5px solid var(--border);
+  background:rgba(255,255,255,0.03);
+  color:var(--muted); font-family:'Cabinet Grotesk',sans-serif;
+  font-size:0.9rem; font-weight:700;
+  cursor:pointer; transition:all 0.2s;
+  display:flex; flex-direction:column;
+  align-items:center; gap:0.3rem;
+}
+.role-btn .ri { font-size:1.4rem; }
+.role-btn:hover { border-color:rgba(245,200,66,0.4); color:var(--text); }
+.role-btn.active {
+  border-color:var(--gold);
+  background:rgba(245,200,66,0.08);
+  color:var(--gold);
+  box-shadow:0 0 20px rgba(245,200,66,0.15);
+}
+
+/* ── FORM ── */
+.form-group { margin-bottom:1rem; }
+.form-label {
+  display:block; font-size:0.75rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:1px;
+  color:var(--muted); margin-bottom:0.45rem;
+}
+.form-input {
+  width:100%; padding:0.8rem 1rem;
+  background:rgba(255,255,255,0.04);
+  border:1.5px solid var(--border);
+  border-radius:12px; color:var(--text);
+  font-family:'Cabinet Grotesk',sans-serif;
+  font-size:0.95rem; outline:none;
+  transition:all 0.2s;
+}
+.form-input::placeholder { color:rgba(255,255,255,0.2); }
+.form-input:focus {
+  border-color:rgba(245,200,66,0.5);
+  background:rgba(245,200,66,0.04);
+  box-shadow:0 0 0 3px rgba(245,200,66,0.08);
+}
+.form-input.err { border-color:#ef4444; }
+
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; }
+
+/* ── SUBMIT BTN ── */
+.btn-submit {
+  width:100%; padding:0.95rem;
+  background:linear-gradient(135deg,var(--gold) 0%,var(--orange) 100%);
+  border:none; border-radius:14px;
+  font-family:'Cabinet Grotesk',sans-serif;
+  font-size:1rem; font-weight:800;
+  color:#0a0f1e; cursor:pointer;
+  box-shadow:0 8px 32px rgba(245,200,66,0.3);
+  transition:all 0.2s; margin-top:0.5rem;
+  position:relative; overflow:hidden;
+}
+.btn-submit::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(135deg,transparent 0%,rgba(255,255,255,0.25) 100%);
+  opacity:0; transition:opacity 0.2s;
+}
+.btn-submit:hover::after { opacity:1; }
+.btn-submit:hover { transform:translateY(-2px); box-shadow:0 12px 40px rgba(245,200,66,0.45); }
+.btn-submit:active { transform:translateY(1px); }
+.btn-submit:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
+
+/* ── ERROR / SUCCESS ── */
+.msg {
+  padding:0.7rem 1rem; border-radius:10px;
+  font-size:0.85rem; font-weight:600;
+  margin-bottom:1rem; display:none;
+}
+.msg.error { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; display:block; }
+.msg.success { background:rgba(0,229,204,0.1); border:1px solid rgba(0,229,204,0.3); color:var(--teal); display:block; }
+
+/* ── ADMIN HINT ── */
+.admin-hint {
+  margin-top:1.2rem; padding:0.75rem 1rem;
+  background:rgba(245,200,66,0.06);
+  border:1px solid rgba(245,200,66,0.2);
+  border-radius:10px; font-size:0.78rem; color:var(--muted);
+  text-align:center; line-height:1.6;
+}
+.admin-hint strong { color:var(--gold); }
+
+/* ── DIVIDER ── */
+.divider {
+  text-align:center; color:var(--muted);
+  font-size:0.78rem; margin:1rem 0 0;
+  position:relative;
+}
+.divider::before,.divider::after {
+  content:''; position:absolute; top:50%;
+  width:38%; height:1px; background:var(--border);
+}
+.divider::before { left:0; }
+.divider::after { right:0; }
+
+/* ── FORM PANELS ── */
+.form-panel { display:none; }
+.form-panel.active { display:block; }
+
+/* ── FLOATING PARTICLES ── */
+.particle {
+  position:fixed; border-radius:50%;
+  pointer-events:none; z-index:2;
+  animation:floatUp linear infinite;
+}
+@keyframes floatUp {
+  0%   { transform:translateY(0) rotate(0deg); opacity:0; }
+  10%  { opacity:1; }
+  90%  { opacity:0.6; }
+  100% { transform:translateY(-100vh) rotate(720deg); opacity:0; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas3d"></canvas>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+
+    <!-- LOGO -->
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <h1>ZapShop</h1>
+      <p>Your AI-powered shopping universe</p>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('login')">Sign In</button>
+      <button class="tab" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+
+    <!-- ERROR / SUCCESS -->
+    <div class="msg" id="msgBox"></div>
+
+    <!-- LOGIN PANEL -->
+    <div class="form-panel active" id="panel-login">
+      <div class="role-row">
+        <button class="role-btn active" id="role-user" onclick="setRole('user')">
+          <span class="ri">👤</span> User
+        </button>
+        <button class="role-btn" id="role-admin" onclick="setRole('admin')">
+          <span class="ri">🛡️</span> Admin
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input class="form-input" id="login-email" type="email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="login-password" type="password" placeholder="••••••••">
+      </div>
+
+      <button class="btn-submit" id="loginBtn" onclick="doLogin()">
+        Sign In →
+      </button>
+    </div>
+
+    <!-- SIGNUP PANEL -->
+    <div class="form-panel" id="panel-signup">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input class="form-input" id="signup-username" type="text" placeholder="cooluser99">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" id="signup-email" type="email" placeholder="you@example.com">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password (min 6 chars)</label>
+        <input class="form-input" id="signup-password" type="password" placeholder="••••••••">
+      </div>
+
+      <button class="btn-submit" id="signupBtn" onclick="doSignup()">
+        Create Account →
+      </button>
+      <div class="divider">Already have an account? <span style="color:var(--gold);cursor:pointer;font-weight:700" onclick="switchTab('login')">Sign In</span></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const BASE = "";
+let selectedRole = "user";
+
+// ─── PARTICLES ───
+function spawnParticles() {
+  const colors = ["#f5c842","#ff6b35","#ff3fa4","#00e5cc","#6366f1"];
+  for (let i = 0; i < 18; i++) {
+    const el = document.createElement("div");
+    el.className = "particle";
+    const sz = 3 + Math.random() * 6;
+    el.style.cssText = `
+      width:${sz}px; height:${sz}px;
+      left:${Math.random()*100}vw;
+      bottom:${-20 + Math.random()*-60}px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      opacity:${0.3+Math.random()*0.5};
+      animation-duration:${8+Math.random()*12}s;
+      animation-delay:${Math.random()*10}s;
+      filter:blur(${Math.random()*1}px);
+    `;
+    document.body.appendChild(el);
+  }
+}
+spawnParticles();
+
+// ─── 3D CANVAS ───
+(function() {
+  const canvas = document.getElementById("canvas3d");
+  const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+  if (!gl) return;
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  const vsrc = `
+    attribute vec2 a_pos;
+    varying vec2 v_uv;
+    void main() { v_uv = a_pos * 0.5 + 0.5; gl_Position = vec4(a_pos, 0.0, 1.0); }
+  `;
+  const fsrc = `
+    precision mediump float;
+    varying vec2 v_uv;
+    uniform float u_time;
+    uniform vec2 u_res;
+    uniform vec2 u_mouse;
+
+    mat2 rot(float a) { return mat2(cos(a),-sin(a),sin(a),cos(a)); }
+
+    float orb(vec3 p, float r) { return length(p) - r; }
+
+    float scene(vec3 p, float t) {
+      p.xz = rot(t * 0.15) * p.xz;
+      p.xy = rot(t * 0.08) * p.xy;
+      float d = 1e9;
+      for(int i=0;i<4;i++){
+        vec3 q = p;
+        float a = float(i) * 1.5707963;
+        q.xz = rot(a) * q.xz;
+        q.x -= 2.2;
+        d = min(d, orb(q, 0.4));
+      }
+      d = min(d, orb(p, 0.6));
+      return d;
+    }
+
+    vec3 normal(vec3 p, float t) {
+      float e = 0.002;
+      return normalize(vec3(
+        scene(p+vec3(e,0,0),t)-scene(p-vec3(e,0,0),t),
+        scene(p+vec3(0,e,0),t)-scene(p-vec3(0,e,0),t),
+        scene(p+vec3(0,0,e),t)-scene(p-vec3(0,0,e),t)
+      ));
+    }
+
+    void main() {
+      vec2 uv = (v_uv - 0.5) * vec2(u_res.x/u_res.y, 1.0) * 2.0;
+      vec2 m = (u_mouse / u_res - 0.5) * 0.3;
+
+      vec3 ro = vec3(0.0, 0.0, 5.0);
+      vec3 rd = normalize(vec3(uv + m, -1.8));
+      rd.xz = rot(m.x) * rd.xz;
+      rd.yz = rot(m.y) * rd.yz;
+
+      float t = 0.0; vec3 p;
+      bool hit = false;
+      for(int i=0;i<80;i++){
+        p = ro + rd * t;
+        float d = scene(p, u_time);
+        if(d < 0.005) { hit=true; break; }
+        if(t>20.0) break;
+        t += d * 0.6;
+      }
+
+      vec3 col = vec3(0.02, 0.04, 0.10);
+      if(hit){
+        vec3 n = normal(p, u_time);
+        vec3 ld = normalize(vec3(1.0, 2.0, 3.0));
+        float diff = max(dot(n, ld), 0.0);
+        float spec = pow(max(dot(reflect(-ld,n),-rd),0.0), 32.0);
+        vec3 gold = vec3(0.96, 0.78, 0.26);
+        vec3 orange = vec3(1.0, 0.42, 0.21);
+        col = mix(gold, orange, smoothstep(0.0,1.0,p.y*0.3+0.5));
+        col = col * (0.15 + 0.8*diff) + vec3(1.0)*spec*0.6;
+        float rim = 1.0 - max(dot(n,-rd),0.0);
+        col += vec3(0.0, 0.9, 0.8) * pow(rim,3.0) * 0.5;
+        float fog = 1.0 - exp(-t*0.04);
+        col = mix(col, vec3(0.02,0.04,0.10), fog);
+      }
+
+      // Glow rings
+      float dist = length(uv);
+      col += vec3(0.96,0.78,0.26) * 0.015 / (dist*dist + 0.3);
+      col += vec3(0.0,0.9,0.8) * 0.008 / (length(uv - vec2(sin(u_time*0.5)*1.2, cos(u_time*0.3)*0.8))*2.0 + 0.5);
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `;
+
+  function mkShader(type, src) {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, src); gl.compileShader(sh);
+    return sh;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, mkShader(gl.VERTEX_SHADER, vsrc));
+  gl.attachShader(prog, mkShader(gl.FRAGMENT_SHADER, fsrc));
+  gl.linkProgram(prog); gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,3,-1,-1,3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, "a_pos");
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  const uTime = gl.getUniformLocation(prog, "u_time");
+  const uRes  = gl.getUniformLocation(prog, "u_res");
+  const uMouse= gl.getUniformLocation(prog, "u_mouse");
+
+  let mx=0, my=0;
+  document.addEventListener("mousemove", e => { mx=e.clientX; my=e.clientY; });
+
+  let start = performance.now();
+  function frame() {
+    const t = (performance.now() - start) / 1000;
+    gl.uniform1f(uTime, t);
+    gl.uniform2f(uRes, canvas.width, canvas.height);
+    gl.uniform2f(uMouse, mx, my);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+
+// ─── TABS ───
+function switchTab(tab) {
+  document.querySelectorAll(".tab").forEach((t,i) => t.classList.toggle("active", (i===0&&tab==="login")||(i===1&&tab==="signup")));
+  document.querySelectorAll(".form-panel").forEach(p => p.classList.remove("active"));
+  document.getElementById("panel-" + tab).classList.add("active");
+  clearMsg();
+}
+
+// ─── ROLE ───
+function setRole(role) {
+  selectedRole = role;
+  document.getElementById("role-user").classList.toggle("active", role==="user");
+  document.getElementById("role-admin").classList.toggle("active", role==="admin");
+}
+
+function showMsg(msg, type) {
+  const el = document.getElementById("msgBox");
+  el.textContent = msg; el.className = "msg " + type;
+}
+function clearMsg() {
+  const el = document.getElementById("msgBox");
+  el.className = "msg"; el.textContent = "";
+}
+
+// ─── LOGIN ───
+async function doLogin() {
+  clearMsg();
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  if (!email || !password) { showMsg("Please fill in all fields", "error"); return; }
+
+  const btn = document.getElementById("loginBtn");
+  btn.disabled = true; btn.textContent = "Signing in...";
+
+  try {
+    const res = await fetch(BASE + "/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { showMsg(data.error || "Login failed", "error"); return; }
+
+    const user = data.user;
+
+    // Role check
+    if (selectedRole === "admin" && user.role !== "admin") {
+      showMsg("⛔ You don't have admin access", "error"); return;
+    }
+
+    // Save user
+    localStorage.setItem("zap_user", JSON.stringify(user));
+    showMsg("✅ Welcome back, " + user.username + "!", "success");
+
+    setTimeout(() => {
+      if (user.role === "admin") {
+        window.location.href = "admin.html";
+      } else {
+        window.location.href = "index.html";
+      }
+    }, 800);
+  } catch(e) {
+    showMsg("⚠️ Cannot connect to server. Is app.py running?", "error");
+  } finally {
+    btn.disabled = false; btn.textContent = "Sign In →";
+  }
+}
+
+// ─── SIGNUP ───
+async function doSignup() {
+  clearMsg();
+  const username = document.getElementById("signup-username").value.trim();
+  const email = document.getElementById("signup-email").value.trim();
+  const password = document.getElementById("signup-password").value;
+
+  if (!username || !email || !password) { showMsg("Please fill in all fields", "error"); return; }
+
+  const btn = document.getElementById("signupBtn");
+  btn.disabled = true; btn.textContent = "Creating account...";
+
+  try {
+    const res = await fetch(BASE + "/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { showMsg(data.error || "Signup failed", "error"); return; }
+
+    localStorage.setItem("zap_user", JSON.stringify(data.user));
+    showMsg("🎉 Account created! Redirecting...", "success");
+    setTimeout(() => window.location.href = "index.html", 1000);
+  } catch(e) {
+    showMsg("⚠️ Cannot connect to server. Is app.py running?", "error");
+  } finally {
+    btn.disabled = false; btn.textContent = "Create Account →";
+  }
+}
+
+// Enter key
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  if (document.getElementById("panel-login").classList.contains("active")) doLogin();
+  else doSignup();
+});
+
+// If already logged in, redirect
+const saved = localStorage.getItem("zap_user");
+if (saved) {
+  try {
+    const u = JSON.parse(saved);
+    if (u && u.id) window.location.href = u.role === "admin" ? "admin.html" : "index.html";
+  } catch(e) { localStorage.removeItem("zap_user"); }
+}
+</script>
+</body>
+</html>

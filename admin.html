@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeoShop Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #06080f;
+    --surface: #0b0f1a;
+    --surface2: #101626;
+    --surface3: #161d2e;
+    --border: rgba(99,102,241,0.15);
+    --accent: #6366f1;
+    --accent2: #ec4899;
+    --accent3: #f59e0b;
+    --green: #10b981;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+
+  .sidebar {
+    width: 240px; min-height: 100vh; background: var(--surface);
+    border-right: 1px solid var(--border); display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .sidebar-logo { padding: 1.5rem; border-bottom: 1px solid var(--border); }
+  .sidebar-logo h2 {
+    font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .sidebar-logo span { font-size: 0.75rem; color: var(--muted); display: block; margin-top: 0.2rem; font-family: 'DM Mono', monospace; }
+  .sidebar-nav { padding: 1rem 0.75rem; flex: 1; display: flex; flex-direction: column; gap: 0.25rem; }
+  .nav-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; padding: 0.5rem 0.75rem; margin-top: 0.5rem; }
+  .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.75rem; border-radius: 10px; cursor: pointer; font-size: 0.9rem; color: var(--muted); transition: all 0.2s; text-decoration: none; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(99,102,241,0.12); color: var(--accent); }
+  .nav-item .icon { width: 20px; text-align: center; }
+  .sidebar-bottom { padding: 1rem 0.75rem; border-top: 1px solid var(--border); }
+  .status-dot { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--green); padding: 0.5rem; }
+  .dot-live { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: blink 1.5s infinite; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .topbar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 2rem; height: 60px; display: flex; align-items: center;
+    justify-content: space-between; position: sticky; top: 0; z-index: 10;
+  }
+  .topbar-title { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; }
+  .topbar-actions { display: flex; gap: 0.75rem; }
+
+  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1.1rem; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.2s; border: none; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #5558e3; transform: translateY(-1px); }
+  .btn-ghost { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: var(--red); }
+  .btn-danger:hover { background: rgba(239,68,68,0.2); }
+  .btn-success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); color: var(--green); }
+  .btn-success:hover { background: rgba(16,185,129,0.2); }
+  .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+
+  .content { flex: 1; overflow-y: auto; padding: 2rem; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; animation: fadeUp 0.5s ease both; }
+  .stat-card:nth-child(1){animation-delay:0.05s} .stat-card:nth-child(2){animation-delay:0.1s}
+  .stat-card:nth-child(3){animation-delay:0.15s} .stat-card:nth-child(4){animation-delay:0.2s}
+  .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 0.5rem; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; line-height: 1; margin-bottom: 0.3rem; }
+  .stat-sub { font-size: 0.8rem; color: var(--muted); }
+  .stat-card.blue .stat-value { color: var(--accent); }
+  .stat-card.pink .stat-value { color: var(--accent2); }
+  .stat-card.amber .stat-value { color: var(--accent3); }
+  .stat-card.green .stat-value { color: var(--green); }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 1.5rem; animation: fadeUp 0.5s ease 0.25s both; }
+  .panel-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .panel-title { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  thead tr { background: var(--surface2); border-bottom: 1px solid var(--border); }
+  th { padding: 0.75rem 1.25rem; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr:last-child { border-bottom: none; }
+  td { padding: 0.85rem 1.25rem; vertical-align: middle; }
+  .td-img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+
+  .badge { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 50px; font-size: 0.72rem; font-weight: 600; }
+  .badge-electronics { background: rgba(99,102,241,0.15); color: var(--accent); }
+  .badge-fashion { background: rgba(236,72,153,0.15); color: var(--accent2); }
+  .badge-accessories { background: rgba(245,158,11,0.15); color: var(--accent3); }
+  .td-actions { display: flex; gap: 0.4rem; align-items: center; }
+
+  .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  @media (max-width: 900px) { .analytics-grid { grid-template-columns: 1fr; } }
+
+  .chart-bars { display: flex; flex-direction: column; gap: 0.75rem; padding: 1.25rem 1.5rem; }
+  .chart-row { display: flex; align-items: center; gap: 1rem; }
+  .chart-label { width: 100px; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chart-bar-bg { flex: 1; height: 10px; background: var(--surface2); border-radius: 6px; overflow: hidden; }
+  .chart-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 6px; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+  .chart-val { width: 40px; text-align: right; font-size: 0.8rem; font-family: 'DM Mono', monospace; color: var(--muted); }
+
+  .cat-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; padding: 1.25rem 1.5rem; }
+  .cat-pill { padding: 0.5rem 1rem; border-radius: 50px; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); z-index: 200; display: none; align-items: center; justify-content: center; padding: 1rem; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: 480px; animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); overflow: hidden; }
+  @keyframes modalIn { from { opacity: 0; transform: scale(0.9) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .modal-head { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-head h3 { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; }
+  .modal-body { padding: 1.5rem; }
+  .form-group { margin-bottom: 1rem; }
+  label { display: block; font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; margin-bottom: 0.4rem; }
+  input, select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 0.65rem 0.9rem; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+  input:focus, select:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+  .modal-foot { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--surface2); border: 1px solid var(--border); padding: 0.8rem 1.4rem; border-radius: 12px; font-size: 0.9rem; z-index: 300; transform: translateY(80px); opacity: 0; transition: all 0.3s; white-space: nowrap; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: var(--green); }
+  .toast.error { border-color: var(--red); }
+
+  /* DELETE ANIMATION */
+  tr.deleting { animation: rowFade 0.3s ease forwards; }
+  @keyframes rowFade { to { opacity: 0; transform: translateX(20px); } }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h2>NeoShop</h2>
+    <span>Admin Console v2.0</span>
+  </div>
+  <nav class="sidebar-nav">
+    <span class="nav-label">Main</span>
+    <a class="nav-item active" href="#" onclick="showTab('dashboard', this)">
+      <span class="icon">📊</span> Dashboard
+    </a>
+    <a class="nav-item" href="#" onclick="showTab('products', this)">
+      <span class="icon">📦</span> Products
+    </a>
+    <a class="nav-item" href="#" onclick="showTab('analytics', this)">
+      <span class="icon">📈</span> Analytics
+    </a>
+    <span class="nav-label">Actions</span>
+    <a class="nav-item" href="#" onclick="openAddModal()">
+      <span class="icon">➕</span> Add Product
+    </a>
+    <a class="nav-item" href="#" onclick="resetProducts()">
+      <span class="icon">🔄</span> Reset Demo Data
+    </a>
+    <span class="nav-label">Links</span>
+    <a class="nav-item" href="index.html" target="_blank">
+      <span class="icon">🛒</span> View Store ↗
+    </a>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="status-dot" id="statusDot">
+      <div class="dot-live"></div>
+      Checking...
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="pageTitle">Dashboard</div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost" onclick="refreshAll()">↻ Refresh</button>
+      <button class="btn btn-primary" onclick="openAddModal()">+ Add Product</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD TAB -->
+    <div id="tab-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-label">Total Products</div>
+          <div class="stat-value" id="s-products">—</div>
+          <div class="stat-sub">In store</div>
+        </div>
+        <div class="stat-card pink">
+          <div class="stat-label">Cart Items</div>
+          <div class="stat-value" id="s-cart">—</div>
+          <div class="stat-sub">Pending checkout</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-label">Top Clicks</div>
+          <div class="stat-value" id="s-clicks">—</div>
+          <div class="stat-sub">Most popular</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Categories</div>
+          <div class="stat-value" id="s-cats">—</div>
+          <div class="stat-sub">Product types</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🧾 Orders</div>
+        </div>
+        <div id="ordersList" style="padding:1rem"></div>
+      </div>
+
+      <div class="analytics-grid">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🔥 Top Clicked Products</div></div>
+          <div class="chart-bars" id="topChart"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🗂️ Categories</div></div>
+          <div class="cat-pills" id="catPills"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">📦 Recent Products</div>
+          <a href="#" onclick="showTab('products', null)" style="font-size:0.85rem;color:var(--accent);text-decoration:none">View all →</a>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Clicks</th></tr></thead>
+            <tbody id="recentTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUCTS TAB -->
+    <div id="tab-products" style="display:none">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">All Products</div>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <input id="searchProducts" type="text" placeholder="Search..." style="width:180px;padding:0.4rem 0.75rem;font-size:0.85rem" oninput="filterTable()">
+            <button class="btn btn-danger btn-sm" onclick="clearAllConfirm()">🗑 Clear All</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Image</th><th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Clicks</th><th>Actions</th></tr></thead>
+            <tbody id="productsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS TAB -->
+    <div id="tab-analytics" style="display:none">
+      <div class="analytics-grid">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📈 Click Performance</div></div>
+          <div class="chart-bars" id="analyticsChart"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">💰 Price Range Distribution</div></div>
+          <div class="chart-bars" id="priceChart"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🧠 AI Recommendations Preview</div></div>
+        <div id="aiPreview" style="display:flex;flex-wrap:wrap;gap:1rem;padding:1.5rem"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="productModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">Add Product</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId">
+      <div class="form-group">
+        <label>Product Name</label>
+        <input type="text" id="pName" placeholder="e.g. iPhone 16 Pro">
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="pCategory">
+          <option value="Electronics">Electronics</option>
+          <option value="Fashion">Fashion</option>
+          <option value="Accessories">Accessories</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Price ($)</label>
+        <input type="number" id="pPrice" placeholder="e.g. 999" min="0">
+      </div>
+      <div class="form-group">
+        <label>Image URL (optional)</label>
+        <input type="text" id="pImage" placeholder="https://... (leave blank for auto)">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProduct()">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = "/api";
+let allProducts = [];
+
+// ==================
+// INIT (single definition)
+// ==================
+async function init() {
+  await checkConnection();
+  await loadStats();
+  await loadProducts();
+  await loadOrders();
+}
+
+// ==================
+// CONNECTION CHECK
+// ==================
+async function checkConnection() {
+  try {
+    await fetch(`${BASE}/`);
+    document.getElementById("statusDot").innerHTML = `<div class="dot-live"></div> API Connected`;
+    document.getElementById("statusDot").style.color = "var(--green)";
+  } catch(e) {
+    document.getElementById("statusDot").innerHTML = `<div class="dot-live" style="background:var(--red)"></div> Offline`;
+    document.getElementById("statusDot").style.color = "var(--red)";
+    showToast('⚠️ Backend offline. Start app.py!', 'error');
+  }
+}
+
+// ==================
+// ORDERS (single styled definition)
+// ==================
+async function loadOrders() {
+  try {
+    const res = await fetch(`${BASE}/orders`);
+    const data = await res.json();
+
+    const container = document.getElementById("ordersList");
+
+    if (!data.length) {
+      container.innerHTML = `<p style="color:var(--muted)">No orders yet.</p>`;
+      return;
+    }
+
+    container.innerHTML = data.map(o => `
+      <div style="
+        background:var(--surface2);
+        border:1px solid var(--border);
+        border-radius:12px;
+        padding:1rem;
+        margin-bottom:1rem;
+      ">
+        <div style="display:flex;justify-content:space-between">
+          <strong>Order #${o.id}</strong>
+          <span style="color:var(--accent)">${o.status}</span>
+        </div>
+        <div style="margin-top:0.5rem;font-size:0.85rem">
+          👤 ${o.user_name} (${o.user_email})<br>
+          📦 Items: ${JSON.parse(o.items).map(i => i.name).join(", ")}<br>
+          📍 ${o.address}, ${o.city} - ${o.pincode}<br>
+          📞 ${o.phone}<br>
+          💰 ₹${o.total}
+        </div>
+      </div>
+    `).join("");
+
+  } catch (e) {
+    console.error(e);
+    document.getElementById("ordersList").innerHTML =
+      `<p style="color:red">Failed to load orders ❌</p>`;
+  }
+}
+
+// ==================
+// STATS
+// ==================
+async function loadStats() {
+  try {
+    const res = await fetch(`${BASE}/stats`);
+    const data = await res.json();
+
+    document.getElementById("s-products").textContent = data.total_products;
+    document.getElementById("s-cart").textContent = data.total_cart_items;
+    document.getElementById("s-cats").textContent = data.categories?.length || 0;
+
+    const topClick = data.top_clicked?.[0];
+    document.getElementById("s-clicks").textContent = topClick ? topClick.clicks : 0;
+
+    const maxClicks = Math.max(...(data.top_clicked?.map(x => x.clicks) || [1]), 1);
+    const chartHTML = (data.top_clicked || []).map(p => `
+      <div class="chart-row">
+        <div class="chart-label" title="${p.name}">${p.name}</div>
+        <div class="chart-bar-bg">
+          <div class="chart-bar-fill" style="width:${Math.round((p.clicks / maxClicks) * 100)}%"></div>
+        </div>
+        <div class="chart-val">${p.clicks}</div>
+      </div>
+    `).join('') || '<p style="color:var(--muted);padding:1rem">No clicks yet!</p>';
+
+    document.getElementById("topChart").innerHTML = chartHTML;
+    document.getElementById("analyticsChart").innerHTML = chartHTML;
+
+    const colors = { Electronics: 'badge-electronics', Fashion: 'badge-fashion', Accessories: 'badge-accessories' };
+    document.getElementById("catPills").innerHTML = (data.categories || []).map(c => `
+      <div class="cat-pill ${colors[c.category] || 'badge-electronics'}">
+        ${c.category} <strong>${c.count}</strong>
+      </div>
+    `).join('');
+  } catch(e) {}
+}
+
+// ==================
+// PRODUCTS
+// ==================
+async function loadProducts() {
+  try {
+    const res = await fetch(`${BASE}/products`);
+    allProducts = await res.json();
+    renderTable(allProducts);
+    renderRecent(allProducts.slice(0, 5));
+    renderPriceChart(allProducts);
+    renderAIPreview();
+  } catch(e) {}
+}
+
+function renderTable(data) {
+  document.getElementById("productsTable").innerHTML = data.map(p => `
+    <tr id="row-${p.id}">
+      <td><img class="td-img" src="${p.image}" alt="${p.name}" onerror="this.src='https://dummyimage.com/44x44/1a1a2e/6366f1&text=?'"></td>
+      <td><code style="color:var(--muted);font-family:'DM Mono',monospace;font-size:0.8rem">#${p.id}</code></td>
+      <td style="font-weight:600">${p.name}</td>
+      <td><span class="badge badge-${p.category.toLowerCase()}">${p.category}</span></td>
+      <td style="color:var(--accent);font-weight:700">$${p.price}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--muted)">${p.clicks}</td>
+      <td>
+        <div class="td-actions">
+          <button class="btn btn-ghost btn-sm" onclick="openEditModal(${p.id})">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id}, this)">🗑 Delete</button>
+        </div>
+      </td>
+    </tr>
+  `).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">No products yet.</td></tr>`;
+}
+
+function renderRecent(data) {
+  document.getElementById("recentTable").innerHTML = data.map(p => `
+    <tr>
+      <td><img class="td-img" src="${p.image}" onerror="this.src='https://dummyimage.com/44x44/1a1a2e/6366f1&text=?'"></td>
+      <td style="font-weight:600">${p.name}</td>
+      <td><span class="badge badge-${p.category.toLowerCase()}">${p.category}</span></td>
+      <td style="color:var(--accent);font-weight:700">$${p.price}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--muted)">${p.clicks} views</td>
+    </tr>
+  `).join('');
+}
+
+// ==================
+// PRICE CHART (single real definition)
+// ==================
+function renderPriceChart(data) {
+  const buckets = { '<$100': 0, '$100-$300': 0, '$300-$700': 0, '>$700': 0 };
+  data.forEach(p => {
+    if (p.price < 100) buckets['<$100']++;
+    else if (p.price < 300) buckets['$100-$300']++;
+    else if (p.price < 700) buckets['$300-$700']++;
+    else buckets['>$700']++;
+  });
+  const max = Math.max(...Object.values(buckets), 1);
+  document.getElementById("priceChart").innerHTML = Object.entries(buckets).map(([k, v]) => `
+    <div class="chart-row">
+      <div class="chart-label">${k}</div>
+      <div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${Math.round((v / max) * 100)}%"></div></div>
+      <div class="chart-val">${v}</div>
+    </div>
+  `).join('');
+}
+
+async function renderAIPreview() {
+  try {
+    const res = await fetch(`${BASE}/recommend`);
+    const data = await res.json();
+    document.getElementById("aiPreview").innerHTML = data.map(p => `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:1rem;width:160px;text-align:center">
+        <img src="${p.image}" style="width:100%;height:80px;object-fit:cover;border-radius:8px;margin-bottom:0.5rem" onerror="this.src='https://dummyimage.com/160x80/1a1a2e/6366f1&text=?'">
+        <div style="font-weight:600;font-size:0.85rem;margin-bottom:0.2rem">${p.name}</div>
+        <div style="color:var(--accent);font-size:0.9rem;font-weight:700">$${p.price}</div>
+        <div style="color:var(--muted);font-size:0.75rem;margin-top:0.2rem">👁 ${p.clicks} clicks</div>
+      </div>
+    `).join('') || '<p style="color:var(--muted)">No recommendations yet.</p>';
+  } catch(e) {}
+}
+
+function filterTable() {
+  const q = document.getElementById("searchProducts").value.toLowerCase();
+  renderTable(allProducts.filter(p =>
+    p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)
+  ));
+}
+
+// ==================
+// ADD / EDIT MODAL
+// ==================
+function openAddModal() {
+  document.getElementById("modalTitle").textContent = "Add Product";
+  document.getElementById("editId").value = "";
+  document.getElementById("pName").value = "";
+  document.getElementById("pCategory").value = "Electronics";
+  document.getElementById("pPrice").value = "";
+  document.getElementById("pImage").value = "";
+  document.getElementById("productModal").classList.add('open');
+}
+
+function openEditModal(id) {
+  const p = allProducts.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById("modalTitle").textContent = "Edit Product";
+  document.getElementById("editId").value = id;
+  document.getElementById("pName").value = p.name;
+  document.getElementById("pCategory").value = p.category;
+  document.getElementById("pPrice").value = p.price;
+  document.getElementById("pImage").value = p.image;
+  document.getElementById("productModal").classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById("productModal").classList.remove('open');
+}
+
+async function saveProduct() {
+  const id = document.getElementById("editId").value;
+  const name = document.getElementById("pName").value.trim();
+  const category = document.getElementById("pCategory").value;
+  const price = document.getElementById("pPrice").value;
+  const image = document.getElementById("pImage").value.trim() ||
+    `https://dummyimage.com/300x200/1a1a2e/6366f1&text=${encodeURIComponent(name)}`;
+
+  if (!name || !price) { showToast('⚠️ Fill in name and price!', 'error'); return; }
+
+  try {
+    const url = id ? `${BASE}/edit/${id}` : `${BASE}/addproduct`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, category, price: parseInt(price), image })
+    });
+    if (!res.ok) throw new Error();
+    closeModal();
+    await refreshAll();
+    showToast(id ? '✅ Product updated!' : '✅ Product added!', 'success');
+  } catch(e) {
+    showToast('❌ Save failed. Is app.py running?', 'error');
+  }
+}
+
+// ==================
+// DELETE
+// ==================
+async function deleteProduct(id, btn) {
+  if (!confirm('Delete this product?')) return;
+
+  const row = document.getElementById("row-" + id);
+  if (row) row.classList.add("deleting");
+
+  try {
+    const res = await fetch(`${BASE}/delete/${id}`);
+    if (!res.ok) throw new Error();
+
+    allProducts = allProducts.filter(p => p.id !== id);
+
+    setTimeout(async () => {
+      renderTable(allProducts);
+      await loadStats();
+      showToast('🗑️ Product deleted!', 'success');
+    }, 300);
+
+  } catch(e) {
+    if (row) row.classList.remove("deleting");
+    showToast('❌ Delete failed. Is app.py running?', 'error');
+  }
+}
+
+async function clearAllConfirm() {
+  if (!confirm('Delete ALL products? This cannot be undone.')) return;
+  for (const p of allProducts) {
+    await fetch(`${BASE}/delete/${p.id}`);
+  }
+  await refreshAll();
+  showToast('🗑️ All products cleared', 'success');
+}
+
+// ==================
+// RESET DEMO DATA
+// ==================
+async function resetProducts() {
+  if (!confirm('Reset to demo products? Current products will be deleted.')) return;
+  try {
+    await fetch(`${BASE}/addproducts`);
+    await refreshAll();
+    showToast('✅ Demo data reset!', 'success');
+  } catch(e) {
+    showToast('❌ Reset failed. Is app.py running?', 'error');
+  }
+}
+
+// ==================
+// TABS
+// ==================
+function showTab(tab, el) {
+  ['dashboard', 'products', 'analytics'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.closest('.nav-item').classList.add('active');
+  document.getElementById("pageTitle").textContent =
+    { dashboard: 'Dashboard', products: 'Products', analytics: 'Analytics' }[tab];
+  return false;
+}
+
+// ==================
+// REFRESH
+// ==================
+async function refreshAll() {
+  await loadStats();
+  await loadProducts();
+}
+
+// ==================
+// TOAST
+// ==================
+function showToast(msg, type = '') {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+document.getElementById("productModal").addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Single init() call
+init();
+</script>
+</body>
+</html>

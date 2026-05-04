@@ -367,6 +367,34 @@ nav{position:sticky;top:0;z-index:100;background:var(--dark);border-bottom:3px s
     </div>
   </div>
 
+  <!-- OTP PANEL -->
+  <div id="panel-otp" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div class="order-form" style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1.2rem;padding:2rem 1.5rem">
+      <div style="font-size:3rem">📲</div>
+      <div class="of-title" style="text-align:center">Verify Your Phone</div>
+      <p style="text-align:center;color:#666;font-size:.95rem;font-weight:600;margin:0">
+        We sent a 6-digit OTP to<br>
+        <span id="otpPhoneDisplay" style="color:var(--dark);font-weight:900"></span>
+      </p>
+      <div class="of-group" style="width:100%;max-width:280px">
+        <input class="of-input" id="otp-input" placeholder="Enter 6-digit OTP"
+          maxlength="6" inputmode="numeric" style="text-align:center;font-size:1.4rem;letter-spacing:.4rem;font-weight:900"
+          oninput="this.value=this.value.replace(/\D/g,\'\')">
+        <div class="of-err" id="err-otp" style="text-align:center">Incorrect OTP. Try again.</div>
+      </div>
+      <button class="chk-btn" id="verifyOtpBtn" onclick="verifyOtpAndOrder()" style="max-width:280px">
+        \u2705 Verify &amp; Place Order
+      </button>
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:center">
+        <span id="resendTimer" style="font-size:.85rem;color:#999;font-weight:700"></span>
+        <button id="resendBtn" onclick="resendOtp()" style="display:none;background:none;border:none;color:var(--primary);font-weight:900;font-size:.9rem;cursor:pointer;font-family:\'Nunito\',sans-serif;text-decoration:underline">
+          Resend OTP
+        </button>
+      </div>
+      <button onclick="showPanel(\'checkout\')" style="width:100%;max-width:280px;padding:.6rem;background:white;border:2px solid var(--dark);border-radius:12px;font-family:\'Nunito\',sans-serif;font-weight:800;cursor:pointer;color:var(--dark)">&#8592; Back</button>
+    </div>
+  </div>
+
   <!-- SUCCESS PANEL -->
   <div id="panel-success" style="display:none;flex-direction:column;flex:1;overflow:hidden">
     <div class="order-success">
@@ -757,54 +785,153 @@ function validateAll() {
 }
 
 // ═══════════════════════════════════════════
-// PLACE ORDER
+// OTP STATE
+// ═══════════════════════════════════════════
+let _pendingOrder = null;   // holds address/city/pincode/phone while OTP is open
+let _resendCountdown = null;
+
+// ═══════════════════════════════════════════
+// PLACE ORDER — now sends OTP first
 // ═══════════════════════════════════════════
 async function placeOrder() {
   if (!validateAll()) {
     showToast("⚠️ Please fix the errors above", "error");
     return;
   }
+  if (!currentUser) { showToast("❌ Please log in first", "error"); return; }
 
   const address = document.getElementById("addr-address").value.trim();
   const city    = document.getElementById("addr-city").value.trim();
   const pincode = document.getElementById("addr-pincode").value.trim();
   const phone   = document.getElementById("addr-phone").value.trim();
 
+  _pendingOrder = { address, city, pincode, phone };
+
   const btn = document.getElementById("placeOrderBtn");
   btn.disabled = true;
-  btn.innerHTML = `<span class="spinner"></span> Placing Order...`;
+  btn.innerHTML = `<span class="spinner"></span> Sending OTP...`;
 
   try {
-    const res = await fetch(BASE + "/order/place", {
+    const res = await fetch(BASE + "/send-otp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: currentUser.id, address, city, pincode, phone })
+      body: JSON.stringify({ phone, user_id: currentUser.id })
     });
     const data = await res.json();
     if (!res.ok) {
-      showToast("❌ " + (data.error || "Order failed. Try again."), "error");
+      showToast("❌ " + (data.error || "Could not send OTP"), "error");
       return;
     }
+    // Show OTP panel
+    document.getElementById("otpPhoneDisplay").textContent = "+91 " + phone;
+    document.getElementById("otp-input").value = "";
+    document.getElementById("err-otp").classList.remove("show");
+    showPanel("otp");
+    startResendTimer();
+    // DEV HINT: if backend logs OTP, check Render logs
+    if (data.otp_preview) {
+      showToast("🔑 Demo OTP: " + data.otp_preview, "info", 8000);
+    }
+  } catch(e) {
+    showToast("❌ Network error. Check connection.", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = "🎉 Place Order";
+  }
+}
 
-    // Clear form
+function startResendTimer(seconds = 30) {
+  const timerEl = document.getElementById("resendTimer");
+  const resendEl = document.getElementById("resendBtn");
+  resendEl.style.display = "none";
+  let t = seconds;
+  timerEl.textContent = `Resend in ${t}s`;
+  if (_resendCountdown) clearInterval(_resendCountdown);
+  _resendCountdown = setInterval(() => {
+    t--;
+    if (t <= 0) {
+      clearInterval(_resendCountdown);
+      timerEl.textContent = "";
+      resendEl.style.display = "inline";
+    } else {
+      timerEl.textContent = `Resend in ${t}s`;
+    }
+  }, 1000);
+}
+
+async function resendOtp() {
+  if (!_pendingOrder) return;
+  const btn = document.getElementById("resendBtn");
+  btn.disabled = true;
+  try {
+    const res = await fetch(BASE + "/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: _pendingOrder.phone, user_id: currentUser.id })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast("📲 New OTP sent!", "success");
+      if (data.otp_preview) showToast("🔑 Demo OTP: " + data.otp_preview, "info", 8000);
+      startResendTimer();
+    } else {
+      showToast("❌ " + (data.error || "Failed to resend"), "error");
+    }
+  } catch(e) {
+    showToast("❌ Network error", "error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function verifyOtpAndOrder() {
+  const otp = document.getElementById("otp-input").value.trim();
+  const errEl = document.getElementById("err-otp");
+  if (otp.length !== 6) {
+    errEl.classList.add("show");
+    errEl.textContent = "Enter the 6-digit OTP";
+    return;
+  }
+  errEl.classList.remove("show");
+
+  const btn = document.getElementById("verifyOtpBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> Verifying...`;
+
+  try {
+    const res = await fetch(BASE + "/verify-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: currentUser.id,
+        otp,
+        ..._pendingOrder
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || "Incorrect OTP. Try again.";
+      errEl.classList.add("show");
+      document.getElementById("otp-input").value = "";
+      return;
+    }
+    // SUCCESS
+    if (_resendCountdown) clearInterval(_resendCountdown);
+    _pendingOrder = null;
     ["addr-address","addr-city","addr-pincode","addr-phone"].forEach(id => {
       const el = document.getElementById(id);
-      el.value = "";
-      el.classList.remove("ok","error");
+      if (el) { el.value = ""; el.classList.remove("ok","error"); }
     });
     document.querySelectorAll(".of-err").forEach(e => e.classList.remove("show"));
-
-    // Show success screen
     document.getElementById("successOrderId").textContent = "Order #" + data.order_id;
     document.getElementById("successTotal").textContent   = inr(data.total);
     showPanel("success");
     syncBadge();
-
   } catch(e) {
-    showToast("❌ Order failed. Check your connection.", "error");
+    showToast("❌ Network error. Try again.", "error");
   } finally {
     btn.disabled = false;
-    btn.innerHTML = "🎉 Place Order";
+    btn.innerHTML = "✅ Verify & Place Order";
   }
 }
 

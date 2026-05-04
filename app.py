@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify,send_from_directory
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import sqlite3, hashlib, os, json
 
@@ -6,8 +6,10 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "zapshop.db")
+
 def get_db():
-    conn = sqlite3.connect("zapshop.db")
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -58,16 +60,33 @@ def init_db():
 
 init_db()
 
+# ── Static files ──────────────────────────────────────────────────────────────
+
 @app.route("/")
-def serve_index(): 
-    return send_from_directory('.','index.html')
+def serve_index():
+    return send_from_directory('.', 'index.html')
 
-@app.route('/<path:path>')
-def serve_files(path):
-    return send_from_directory('.', path)
+@app.route('/admin')
+@app.route('/admin.html')
+def serve_admin():
+    return send_from_directory('.', 'admin.html')
 
-# AUTH
+@app.route('/auth')
+@app.route('/auth.html')
+def serve_auth():
+    return send_from_directory('.', 'auth.html')
+
+# ── Health check (admin uses /api/ to test connection) ───────────────────────
+
+@app.route("/api/")
+@app.route("/api")
+def api_health():
+    return jsonify({"status": "ok", "message": "ZapShop API running ⚡"})
+
+# ── AUTH ──────────────────────────────────────────────────────────────────────
+
 @app.route("/auth/signup", methods=["POST"])
+@app.route("/api/auth/signup", methods=["POST"])
 def signup():
     d = request.get_json() or {}
     username=(d.get("username") or "").strip()
@@ -82,11 +101,12 @@ def signup():
         u=conn.execute("SELECT * FROM users WHERE email=?",(email,)).fetchone()
         conn.close()
         return jsonify({"success":True,"user":{"id":u["id"],"username":u["username"],"email":u["email"],"role":u["role"]}})
-    except Exception as e:
+    except:
         conn.close()
         return jsonify({"error":"Email or username already exists"}),409
 
 @app.route("/auth/login", methods=["POST"])
+@app.route("/api/auth/login", methods=["POST"])
 def login():
     d = request.get_json() or {}
     email=(d.get("email") or "").strip().lower()
@@ -99,14 +119,17 @@ def login():
     return jsonify({"success":True,"user":{"id":u["id"],"username":u["username"],"email":u["email"],"role":u["role"]}})
 
 @app.route("/auth/users")
+@app.route("/api/auth/users")
 def get_users():
     conn=get_db()
     users=conn.execute("SELECT id,username,email,role,created_at FROM users").fetchall()
     conn.close()
     return jsonify([dict(u) for u in users])
 
-# PRODUCTS
+# ── PRODUCTS ──────────────────────────────────────────────────────────────────
+
 @app.route("/products")
+@app.route("/api/products")
 def products():
     conn=get_db()
     data=conn.execute("SELECT * FROM products ORDER BY id DESC").fetchall()
@@ -114,6 +137,7 @@ def products():
     return jsonify([dict(x) for x in data])
 
 @app.route("/addproducts")
+@app.route("/api/addproducts")
 def add_products():
     conn=get_db()
     conn.execute("DELETE FROM products")
@@ -134,6 +158,7 @@ def add_products():
     return jsonify({"status":"reset ✅"})
 
 @app.route("/addproduct", methods=["POST"])
+@app.route("/api/addproduct", methods=["POST"])
 def add_product():
     d=request.get_json() or {}
     name=(d.get("name") or "").strip()
@@ -148,6 +173,7 @@ def add_product():
     return jsonify({"status":"added"})
 
 @app.route("/edit/<int:id>", methods=["POST"])
+@app.route("/api/edit/<int:id>", methods=["POST"])
 def edit_product(id):
     d=request.get_json() or {}
     conn=get_db()
@@ -157,6 +183,7 @@ def edit_product(id):
     return jsonify({"status":"updated"})
 
 @app.route("/delete/<int:id>")
+@app.route("/api/delete/<int:id>")
 def delete(id):
     conn=get_db()
     conn.execute("DELETE FROM products WHERE id=?",(id,))
@@ -164,6 +191,7 @@ def delete(id):
     return jsonify({"status":"deleted"})
 
 @app.route("/click/<int:id>")
+@app.route("/api/click/<int:id>")
 def click(id):
     uid=request.args.get("user_id",0)
     conn=get_db()
@@ -172,8 +200,10 @@ def click(id):
     conn.commit(); conn.close()
     return jsonify({"status":"ok"})
 
-# AI RECOMMENDATIONS
+# ── AI RECOMMENDATIONS ────────────────────────────────────────────────────────
+
 @app.route("/recommend")
+@app.route("/api/recommend")
 def recommend():
     uid=request.args.get("user_id",0)
     conn=get_db()
@@ -215,8 +245,10 @@ Recommend 4 product IDs. Reply ONLY JSON: {{"product_ids":[1,2,3,4],"reason":"on
     conn2.close()
     return jsonify({"products":[dict(x) for x in data],"reason":"Trending right now 🔥","ai_powered":False})
 
-# CART (per user)
+# ── CART ──────────────────────────────────────────────────────────────────────
+
 @app.route("/cart/<int:uid>")
+@app.route("/api/cart/<int:uid>")
 def cart(uid):
     conn=get_db()
     rows=conn.execute("""SELECT c.id as cart_id,c.quantity,p.id,p.name,p.price,p.image,p.category
@@ -226,6 +258,7 @@ def cart(uid):
     return jsonify({"items":items,"total":sum(i["price"]*i["quantity"] for i in items),"count":len(items)})
 
 @app.route("/cart/add/<int:uid>/<int:pid>", methods=["POST","GET"])
+@app.route("/api/cart/add/<int:uid>/<int:pid>", methods=["POST","GET"])
 def add_cart(uid,pid):
     conn=get_db()
     conn.execute("UPDATE products SET clicks=clicks+1 WHERE id=?",(pid,))
@@ -237,6 +270,7 @@ def add_cart(uid,pid):
     return jsonify({"status":"added"})
 
 @app.route("/cart/remove/<int:uid>/<int:cart_id>")
+@app.route("/api/cart/remove/<int:uid>/<int:cart_id>")
 def remove_cart(uid,cart_id):
     conn=get_db()
     conn.execute("DELETE FROM cart WHERE id=? AND user_id=?",(cart_id,uid))
@@ -244,14 +278,17 @@ def remove_cart(uid,cart_id):
     return jsonify({"status":"removed"})
 
 @app.route("/cart/clear/<int:uid>")
+@app.route("/api/cart/clear/<int:uid>")
 def clear_cart(uid):
     conn=get_db()
     conn.execute("DELETE FROM cart WHERE user_id=?",(uid,))
     conn.commit(); conn.close()
     return jsonify({"status":"cleared"})
 
-# ORDERS
+# ── ORDERS ────────────────────────────────────────────────────────────────────
+
 @app.route("/order/place", methods=["POST"])
+@app.route("/api/order/place", methods=["POST"])
 def place_order():
     d=request.get_json() or {}
     uid=d.get("user_id")
@@ -275,17 +312,8 @@ def place_order():
     conn.close()
     return jsonify({"status":"success","order_id":oid,"total":total})
 
-@app.route("/update-order/<int:id>", methods=["POST"])
-def update_order(id):
-    d = request.get_json()
-    status = d.get("status")
-    conn = get_db()
-    conn.execute("UPDATE orders SET status=? WHERE id=?", (status, id))
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True})
-
 @app.route("/orders/user/<int:uid>")
+@app.route("/api/orders/user/<int:uid>")
 def user_orders(uid):
     conn=get_db()
     rows=conn.execute("SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC",(uid,)).fetchall()
@@ -296,6 +324,7 @@ def user_orders(uid):
     return jsonify(orders)
 
 @app.route("/orders/all")
+@app.route("/api/orders/all")
 def all_orders():
     conn=get_db()
     rows=conn.execute("SELECT * FROM orders ORDER BY created_at DESC").fetchall()
@@ -305,7 +334,19 @@ def all_orders():
         od=dict(o); od["items"]=json.loads(od["items"]); orders.append(od)
     return jsonify(orders)
 
+@app.route("/orders")
+@app.route("/api/orders")
+def get_orders():
+    conn=get_db()
+    rows=conn.execute("SELECT * FROM orders ORDER BY id DESC").fetchall()
+    conn.close()
+    orders=[]
+    for o in rows:
+        od=dict(o); od["items"]=json.loads(od["items"]); orders.append(od)
+    return jsonify(orders)
+
 @app.route("/order/status/<int:oid>", methods=["POST"])
+@app.route("/api/order/status/<int:oid>", methods=["POST"])
 def update_status(oid):
     d=request.get_json() or {}
     conn=get_db()
@@ -313,26 +354,41 @@ def update_status(oid):
     conn.commit(); conn.close()
     return jsonify({"status":"updated"})
 
-@app.route("/orders")
-def get_orders():
-    conn = get_db()
-    data = conn.execute("SELECT * FROM orders ORDER BY id DESC").fetchall()
-    conn.close()
-    return jsonify([dict(x) for x in data])
+@app.route("/update-order/<int:id>", methods=["POST"])
+@app.route("/api/update-order/<int:id>", methods=["POST"])
+def update_order(id):
+    d=request.get_json() or {}
+    conn=get_db()
+    conn.execute("UPDATE orders SET status=? WHERE id=?",(d.get("status"),id))
+    conn.commit(); conn.close()
+    return jsonify({"success":True})
+
+# ── STATS (fixed: now includes total_cart_items) ──────────────────────────────
 
 @app.route("/stats")
+@app.route("/api/stats")
 def stats():
     conn=get_db()
     tp=conn.execute("SELECT COUNT(*) as c FROM products").fetchone()["c"]
     tu=conn.execute("SELECT COUNT(*) as c FROM users").fetchone()["c"]
     to=conn.execute("SELECT COUNT(*) as c FROM orders").fetchone()["c"]
+    tc=conn.execute("SELECT COALESCE(SUM(quantity),0) as c FROM cart").fetchone()["c"]
     rev=conn.execute("SELECT COALESCE(SUM(total),0) as r FROM orders WHERE status!='cancelled'").fetchone()["r"]
     top=conn.execute("SELECT name,clicks FROM products ORDER BY clicks DESC LIMIT 5").fetchall()
     cats=conn.execute("SELECT category,COUNT(*) as count FROM products GROUP BY category").fetchall()
     pend=conn.execute("SELECT COUNT(*) as c FROM orders WHERE status='pending'").fetchone()["c"]
     conn.close()
-    return jsonify({"total_products":tp,"total_users":tu,"total_orders":to,"revenue":rev,
-                    "pending_orders":pend,"top_clicked":[dict(x) for x in top],"categories":[dict(x) for x in cats]})
+    return jsonify({
+        "total_products": tp,
+        "total_users": tu,
+        "total_orders": to,
+        "total_cart_items": tc,
+        "revenue": rev,
+        "pending_orders": pend,
+        "top_clicked": [dict(x) for x in top],
+        "categories": [dict(x) for x in cats]
+    })
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=False, host="0.0.0.0", port=port)

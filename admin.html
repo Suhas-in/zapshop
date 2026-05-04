@@ -216,6 +216,16 @@
           <div class="stat-value" id="s-cats">—</div>
           <div class="stat-sub">Product types</div>
         </div>
+        <div class="stat-card pink">
+          <div class="stat-label">Total Orders</div>
+          <div class="stat-value" id="s-orders">—</div>
+          <div class="stat-sub" id="s-pending-sub">Pending: —</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-label">Revenue</div>
+          <div class="stat-value" id="s-revenue">—</div>
+          <div class="stat-sub">Excl. cancelled</div>
+        </div>
       </div>
 
       <div class="panel">
@@ -381,16 +391,29 @@ async function loadOrders() {
         padding:1rem;
         margin-bottom:1rem;
       ">
-        <div style="display:flex;justify-content:space-between">
-          <strong>Order #${o.id}</strong>
-          <span style="color:var(--accent)">${o.status}</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+          <strong style="font-family:'Syne',sans-serif;color:var(--accent)">Order #${o.id}</strong>
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <select onchange="updateOrderStatus(${o.id}, this.value)" style="
+              background:var(--surface3);border:1px solid var(--border);
+              border-radius:8px;padding:0.3rem 0.6rem;color:var(--text);
+              font-size:0.8rem;cursor:pointer;
+            ">
+              ${['pending','processing','shipped','delivered','cancelled'].map(s =>
+                `<option value="${s}" ${o.status===s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`
+              ).join('')}
+            </select>
+          </div>
         </div>
-        <div style="margin-top:0.5rem;font-size:0.85rem">
-          👤 ${o.user_name} (${o.user_email})<br>
-          📦 Items: ${JSON.parse(o.items).map(i => i.name).join(", ")}<br>
-          📍 ${o.address}, ${o.city} - ${o.pincode}<br>
+        <div style="margin-top:0.6rem;font-size:0.85rem;line-height:1.8;color:var(--text)">
+          👤 <strong>${o.user_name}</strong> (${o.user_email})<br>
+          📦 <strong>Items:</strong> ${(Array.isArray(o.items) ? o.items : JSON.parse(o.items)).map(i => `${i.name} ×${i.quantity}`).join(", ")}<br>
+          📍 ${o.address}, ${o.city} — ${o.pincode}<br>
           📞 ${o.phone}<br>
-          💰 ₹${o.total}
+          💰 <strong style="color:var(--accent3)">$${o.total}</strong>
+          <span style="color:var(--muted);font-size:0.75rem;margin-left:0.5rem">
+            🕐 ${new Date(o.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+          </span>
         </div>
       </div>
     `).join("");
@@ -411,8 +434,11 @@ async function loadStats() {
     const data = await res.json();
 
     document.getElementById("s-products").textContent = data.total_products;
-    document.getElementById("s-cart").textContent = data.total_cart_items;
+    document.getElementById("s-cart").textContent = data.total_cart_items ?? 0;
     document.getElementById("s-cats").textContent = data.categories?.length || 0;
+    document.getElementById("s-orders").textContent = data.total_orders ?? 0;
+    document.getElementById("s-pending-sub").textContent = `Pending: ${data.pending_orders ?? 0}`;
+    document.getElementById("s-revenue").textContent = `$${data.revenue ?? 0}`;
 
     const topClick = data.top_clicked?.[0];
     document.getElementById("s-clicks").textContent = topClick ? topClick.clicks : 0;
@@ -509,7 +535,8 @@ function renderPriceChart(data) {
 async function renderAIPreview() {
   try {
     const res = await fetch(`${BASE}/recommend`);
-    const data = await res.json();
+    const json = await res.json();
+    const data = json.products || json; // handle both {products:[...]} and raw array
     document.getElementById("aiPreview").innerHTML = data.map(p => `
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:1rem;width:160px;text-align:center">
         <img src="${p.image}" style="width:100%;height:80px;object-fit:cover;border-radius:8px;margin-bottom:0.5rem" onerror="this.src='https://dummyimage.com/160x80/1a1a2e/6366f1&text=?'">
@@ -668,6 +695,24 @@ function showToast(msg, type = '') {
 document.getElementById("productModal").addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
+
+// ==================
+// UPDATE ORDER STATUS
+// ==================
+async function updateOrderStatus(id, status) {
+  try {
+    const res = await fetch(`${BASE}/update-order/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) throw new Error();
+    showToast(`✅ Order #${id} → ${status}`, 'success');
+    await loadStats();
+  } catch(e) {
+    showToast('❌ Failed to update order status', 'error');
+  }
+}
 
 // Single init() call
 init();

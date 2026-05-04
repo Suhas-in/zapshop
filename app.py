@@ -70,7 +70,16 @@ def serve_index():
 @app.route('/admin.html')
 def serve_admin():
     return send_from_directory('.', 'admin.html')
+from flask import send_from_directory
 
+# serve frontend files
+@app.route("/")
+def home():
+    return send_from_directory(".", "index.html")
+
+@app.route("/admin")
+def admin():
+    return send_from_directory(".", "admin.html")
 @app.route('/auth')
 @app.route('/auth.html')
 def serve_auth():

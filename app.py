@@ -433,15 +433,45 @@ def send_otp():
     conn.commit()
     conn.close()
 
-    # ── PRODUCTION: replace with Twilio / MSG91 ──
-    # from twilio.rest import Client
-    # Client(SID, TOKEN).messages.create(
-    #     body=f"Your ZapShop OTP is {otp}",
-    #     from_=TWILIO_FROM, to="+91"+phone)
-    # ─────────────────────────────────────────────
-    print(f"[ZapShop OTP] uid={uid} phone={phone} otp={otp}")
+    # ── SMS via Fast2SMS (free, Indian numbers) ──
+    # Set env var FAST2SMS_KEY in Render dashboard
+    sms_key = os.environ.get("FAST2SMS_KEY", "")
+    sms_sent = False
+    sms_error = ""
+    if sms_key:
+        try:
+            import urllib.request, urllib.parse
+            payload = urllib.parse.urlencode({
+                "route": "otp",
+                "variables_values": otp,
+                "numbers": phone
+            }).encode()
+            req = urllib.request.Request(
+                "https://www.fast2sms.com/dev/bulkV2",
+                data=payload,
+                headers={
+                    "authorization": sms_key,
+                    "Content-Type": "application/x-www-form-urlencoded"
+                }
+            )
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                result = resp.read().decode()
+                print(f"[Fast2SMS] {result}")
+                sms_sent = True
+        except Exception as e:
+            sms_error = str(e)
+            print(f"[Fast2SMS ERROR] {e}")
+    else:
+        print(f"[ZapShop OTP] FAST2SMS_KEY not set — uid={uid} phone={phone} otp={otp}")
 
-    return jsonify({"status": "sent", "otp_preview": otp})
+    # Always return otp_preview in dev (no FAST2SMS_KEY set)
+    # Remove otp_preview line below once FAST2SMS_KEY is configured
+    resp_data = {"status": "sent"}
+    if not sms_key:
+        resp_data["otp_preview"] = otp   # dev mode only
+    if sms_error:
+        resp_data["sms_error"] = sms_error  # visible in browser console
+    return jsonify(resp_data)
 
 @app.route("/verify-otp", methods=["POST"])
 @app.route("/api/verify-otp", methods=["POST"])

@@ -194,16 +194,6 @@ body::after {
 .msg.error { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; display:block; }
 .msg.success { background:rgba(0,229,204,0.1); border:1px solid rgba(0,229,204,0.3); color:var(--teal); display:block; }
 
-/* ── ADMIN HINT ── */
-.admin-hint {
-  margin-top:1.2rem; padding:0.75rem 1rem;
-  background:rgba(245,200,66,0.06);
-  border:1px solid rgba(245,200,66,0.2);
-  border-radius:10px; font-size:0.78rem; color:var(--muted);
-  text-align:center; line-height:1.6;
-}
-.admin-hint strong { color:var(--gold); }
-
 /* ── DIVIDER ── */
 .divider {
   text-align:center; color:var(--muted);
@@ -310,7 +300,7 @@ body::after {
 </div>
 
 <script>
-const BASE = "";
+const BASE = "https://zapshop-s3o7.onrender.com";
 let selectedRole = "user";
 
 // ─── PARTICLES ───
@@ -525,9 +515,9 @@ async function doLogin() {
 
     setTimeout(() => {
       if (user.role === "admin") {
-        window.location.href = "admin.html";
+        window.location.href = "https://zapshop-s3o7.onrender.com/admin";
       } else {
-        window.location.href = "index.html";
+        window.location.href = "https://zapshop-s3o7.onrender.com";
       }
     }, 800);
   } catch(e) {
@@ -560,7 +550,7 @@ async function doSignup() {
 
     localStorage.setItem("zap_user", JSON.stringify(data.user));
     showMsg("🎉 Account created! Redirecting...", "success");
-    setTimeout(() => window.location.href = "index.html", 1000);
+    setTimeout(() => window.location.href = "https://zapshop-s3o7.onrender.com", 1000);
   } catch(e) {
     showMsg("⚠️ Cannot connect to server. Is app.py running?", "error");
   } finally {
@@ -580,7 +570,9 @@ const saved = localStorage.getItem("zap_user");
 if (saved) {
   try {
     const u = JSON.parse(saved);
-    if (u && u.id) window.location.href = u.role === "admin" ? "admin.html" : "index.html";
+    if (u && u.id) window.location.href = u.role === "admin"
+      ? "https://zapshop-s3o7.onrender.com/admin"
+      : "https://zapshop-s3o7.onrender.com";
   } catch(e) { localStorage.removeItem("zap_user"); }
 }
 </script>

@@ -885,7 +885,7 @@ async function resendOtp() {
 }
 
 async function verifyOtpAndOrder() {
-  const otp = document.getElementById("otp-input").value.trim();
+  const otp = document.getElementById("otp-input").value.replace(/\s/g,'').slice(0,6);
   const errEl = document.getElementById("err-otp");
   if (otp.length !== 6) {
     errEl.classList.add("show");
@@ -928,10 +928,11 @@ async function verifyOtpAndOrder() {
     showPanel("success");
     syncBadge();
   } catch(e) {
-    showToast("❌ Network error. Try again.", "error");
+    console.error("verify-otp error:", e);
+    showToast("❌ " + (e.message || "Network error. Try again."), "error", 5000);
   } finally {
     btn.disabled = false;
-    btn.innerHTML = "✅ Verify & Place Order";
+    btn.innerHTML = "✅ Verify &amp; Place Order";
   }
 }
 

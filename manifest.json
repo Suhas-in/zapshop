@@ -1,0 +1,13 @@
+{
+  "background_color": "#0f172a",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "ZapShop",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "zap",
+  "start_url": "/",
+  "theme_color": "#ff6b00",
+  "description": "E-commerce app for browsing and ordering products",
+  "id": "zapshop.app"
+}

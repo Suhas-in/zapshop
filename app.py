@@ -398,6 +398,78 @@ def stats():
         "categories": [dict(x) for x in cats]
     })
 
+
+# ═══════════════════════════════════════════
+# OTP — in-memory store  {user_id: {otp, expires, phone}}
+# ═══════════════════════════════════════════
+import random, time
+_otp_store = {}   # { str(user_id): {"otp": "123456", "expires": ts, "phone": "..."} }
+
+@app.route("/send-otp", methods=["POST"])
+@app.route("/api/send-otp", methods=["POST"])
+def send_otp():
+    d = request.get_json() or {}
+    uid  = str(d.get("user_id", ""))
+    phone = (d.get("phone") or "").strip()
+    if not uid or not phone or len(phone) != 10 or not phone.isdigit():
+        return jsonify({"error": "Valid 10-digit phone required"}), 400
+
+    otp = str(random.randint(100000, 999999))
+    _otp_store[uid] = {"otp": otp, "expires": time.time() + 300, "phone": phone}
+
+    # ── PRODUCTION: replace this block with Twilio / MSG91 call ──
+    # from twilio.rest import Client
+    # Client(TWILIO_SID, TWILIO_TOKEN).messages.create(
+    #     body=f"Your ZapShop OTP is {otp}. Valid 5 min.",
+    #     from_=TWILIO_FROM, to="+91" + phone)
+    # ─────────────────────────────────────────────────────────────
+    print(f"[ZapShop OTP] user={uid} phone={phone} otp={otp}")   # visible in Render logs
+
+    return jsonify({"status": "sent", "otp_preview": otp})   # remove otp_preview in production!
+
+@app.route("/verify-otp", methods=["POST"])
+@app.route("/api/verify-otp", methods=["POST"])
+def verify_otp():
+    d = request.get_json() or {}
+    uid      = str(d.get("user_id", ""))
+    otp_in   = (d.get("otp") or "").strip()
+    address  = (d.get("address") or "").strip()
+    city     = (d.get("city") or "").strip()
+    pincode  = (d.get("pincode") or "").strip()
+    phone    = (d.get("phone") or "").strip()
+
+    if not all([uid, otp_in, address, city, pincode, phone]):
+        return jsonify({"error": "All fields required"}), 400
+
+    record = _otp_store.get(uid)
+    if not record:
+        return jsonify({"error": "No OTP sent. Request a new one."}), 400
+    if time.time() > record["expires"]:
+        _otp_store.pop(uid, None)
+        return jsonify({"error": "OTP expired. Request a new one."}), 400
+    if record["otp"] != otp_in:
+        return jsonify({"error": "Incorrect OTP. Try again."}), 400
+
+    # OTP valid — place the order
+    _otp_store.pop(uid, None)
+    conn = get_db()
+    u = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+    rows = conn.execute("""SELECT c.quantity,p.id,p.name,p.price,p.image,p.category
+        FROM cart c JOIN products p ON c.product_id=p.id WHERE c.user_id=?""", (uid,)).fetchall()
+    if not rows:
+        conn.close()
+        return jsonify({"error": "Cart is empty"}), 400
+    items = [dict(r) for r in rows]
+    total = sum(i["price"] * i["quantity"] for i in items)
+    conn.execute("""INSERT INTO orders(user_id,user_name,user_email,items,total,address,city,pincode,phone,status)
+        VALUES(?,?,?,?,?,?,?,?,?,?)""",
+        (uid, u["username"], u["email"], json.dumps(items), total, address, city, pincode, phone, "pending"))
+    conn.execute("DELETE FROM cart WHERE user_id=?", (uid,))
+    conn.commit()
+    oid = conn.execute("SELECT last_insert_rowid() as id").fetchone()["id"]
+    conn.close()
+    return jsonify({"status": "success", "order_id": oid, "total": total})
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host="0.0.0.0", port=port)

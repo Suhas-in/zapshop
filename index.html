@@ -828,10 +828,14 @@ async function placeOrder() {
     document.getElementById("err-otp").classList.remove("show");
     showPanel("otp");
     startResendTimer();
-    // DEV HINT: if backend logs OTP, check Render logs
     if (data.otp_preview) {
-      showToast("🔑 Demo OTP: " + data.otp_preview, "info", 8000);
+      // DEV MODE — FAST2SMS_KEY not set on Render
+      document.getElementById("otp-input").value = data.otp_preview;
+      showToast("🔧 Dev OTP: " + data.otp_preview, "info", 10000);
+    } else {
+      showToast("📲 OTP sent to +91 " + phone, "success", 4000);
     }
+    if (data.sms_error) console.error("SMS error:", data.sms_error);
   } catch(e) {
     showToast("❌ Network error. Check connection.", "error");
   } finally {
@@ -872,7 +876,12 @@ async function resendOtp() {
     const data = await res.json();
     if (res.ok) {
       showToast("📲 New OTP sent!", "success");
-      if (data.otp_preview) showToast("🔑 Demo OTP: " + data.otp_preview, "info", 8000);
+      if (data.otp_preview) {
+        document.getElementById("otp-input").value = data.otp_preview;
+        showToast("🔧 Dev OTP: " + data.otp_preview, "info", 10000);
+      } else {
+        showToast("📲 New OTP sent to your phone", "success", 4000);
+      }
       startResendTimer();
     } else {
       showToast("❌ " + (data.error || "Failed to resend"), "error");

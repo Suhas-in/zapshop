@@ -25,7 +25,6 @@ nav{position:sticky;top:0;z-index:100;background:var(--dark);border-bottom:3px s
 .zap{color:var(--orange);animation:zapFlicker 2s infinite}
 @keyframes zapFlicker{0%,88%,100%{opacity:1}90%{opacity:.1}93%{opacity:1}96%{opacity:.1}}
 .nav-right{display:flex;align-items:center;gap:.6rem}
-
 /* USER PILL */
 .user-pill{display:flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);border-radius:50px;padding:.3rem .9rem .3rem .4rem;cursor:none;transition:all .2s}
 .user-pill:hover{border-color:var(--yellow);background:rgba(255,214,10,.08)}
@@ -34,11 +33,9 @@ nav{position:sticky;top:0;z-index:100;background:var(--dark);border-bottom:3px s
 .user-role-badge{font-size:.58rem;font-weight:900;padding:.1rem .4rem;border-radius:50px;text-transform:uppercase;letter-spacing:.5px}
 .badge-admin{background:var(--pink);color:white}
 .badge-user{background:var(--teal);color:var(--dark)}
-
 /* LOGIN BTN (guest) */
 .login-btn{display:flex;align-items:center;gap:.4rem;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.15);border-radius:50px;padding:.35rem .9rem;font-family:'Nunito',sans-serif;font-weight:900;font-size:.82rem;color:#bbb;cursor:none;transition:all .2s}
 .login-btn:hover{border-color:var(--yellow);color:var(--yellow)}
-
 /* NAV ACTION BUTTONS */
 .nav-action-btn{display:none;align-items:center;gap:.3rem;border:2px solid var(--dark);border-radius:10px;padding:.4rem .85rem;font-family:'Nunito',sans-serif;font-weight:900;font-size:.78rem;cursor:pointer;transition:all .15s;box-shadow:2px 2px 0 var(--dark)}
 .nav-action-btn:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--dark)}
@@ -257,7 +254,6 @@ nav{position:sticky;top:0;z-index:100;background:var(--dark);border-bottom:3px s
 <nav>
   <div class="nav-logo"><span class="zap">⚡</span>ZapShop</div>
   <div class="nav-right">
-
     <!-- GUEST: shown when not logged in -->
     <button class="login-btn" id="loginBtn" onclick="window.location.href='https://zapshop-g8gt.onrender.com/auth.html'">
       👤 Sign In
@@ -276,7 +272,6 @@ nav{position:sticky;top:0;z-index:100;background:var(--dark);border-bottom:3px s
     <!-- LOGOUT BUTTON -->
     <button class="nav-action-btn btn-logout" id="logoutBtn" onclick="logout()">🚪 Out</button>
 
-    <!-- CART -->
     <button class="cart-btn" onclick="openCart()">🛒 Cart <span class="cart-badge" id="badge">0</span></button>
   </div>
 </nav>
@@ -406,6 +401,34 @@ nav{position:sticky;top:0;z-index:100;background:var(--dark);border-bottom:3px s
     </div>
   </div>
 
+  <!-- OTP PANEL -->
+  <div id="panel-otp" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div class="order-form" style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1.2rem;padding:2rem 1.5rem">
+      <div style="font-size:3rem">📲</div>
+      <div class="of-title" style="text-align:center">Verify Your Phone</div>
+      <p style="text-align:center;color:#666;font-size:.95rem;font-weight:600;margin:0">
+        We sent a 6-digit OTP to<br>
+        <span id="otpPhoneDisplay" style="color:var(--dark);font-weight:900"></span>
+      </p>
+      <div class="of-group" style="width:100%;max-width:280px">
+        <input class="of-input" id="otp-input" placeholder="Enter 6-digit OTP"
+          maxlength="6" inputmode="numeric" style="text-align:center;font-size:1.4rem;letter-spacing:.4rem;font-weight:900"
+          oninput="this.value=this.value.replace(/\D/g,\'\')">
+        <div class="of-err" id="err-otp" style="text-align:center">Incorrect OTP. Try again.</div>
+      </div>
+      <button class="chk-btn" id="verifyOtpBtn" onclick="verifyOtpAndOrder()" style="max-width:280px">
+        \u2705 Verify &amp; Place Order
+      </button>
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:center">
+        <span id="resendTimer" style="font-size:.85rem;color:#999;font-weight:700"></span>
+        <button id="resendBtn" onclick="resendOtp()" style="display:none;background:none;border:none;color:var(--primary);font-weight:900;font-size:.9rem;cursor:pointer;font-family:\'Nunito\',sans-serif;text-decoration:underline">
+          Resend OTP
+        </button>
+      </div>
+      <button onclick="showPanel(\'checkout\')" style="width:100%;max-width:280px;padding:.6rem;background:white;border:2px solid var(--dark);border-radius:12px;font-family:\'Nunito\',sans-serif;font-weight:800;cursor:pointer;color:var(--dark)">&#8592; Back</button>
+    </div>
+  </div>
+
   <!-- SUCCESS PANEL -->
   <div id="panel-success" style="display:none;flex-direction:column;flex:1;overflow:hidden">
     <div class="order-success">
@@ -435,7 +458,7 @@ nav{position:sticky;top:0;z-index:100;background:var(--dark);border-bottom:3px s
 // ═══════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════
-const BASE = "/api";
+const BASE = "https://zapshop-g8gt.onrender.com/api";
 const USD_TO_INR = 83;
 
 function inr(usdPrice) {
@@ -473,16 +496,14 @@ function loadUser() {
 
       // Fill pill
       const initials = (u.username || "?")[0].toUpperCase();
-      document.getElementById("userAvatar").textContent   = initials;
+      document.getElementById("userAvatar").textContent      = initials;
       document.getElementById("userNameDisplay").textContent = u.username;
 
       const badge = document.getElementById("userRoleBadge");
       if (u.role === "admin") {
         badge.textContent = "Admin";
         badge.className   = "user-role-badge badge-admin";
-        // Show admin button
-        const ab = document.getElementById("adminBtn");
-        ab.style.display = "flex";
+        document.getElementById("adminBtn").style.display = "flex";
       } else {
         badge.textContent = "User";
         badge.className   = "user-role-badge badge-user";
@@ -496,21 +517,35 @@ function loadUser() {
         "Welcome back, " + u.username + "! 🎉 Your AI picks are ready.";
     } else {
       // Guest state
-      document.getElementById("loginBtn").style.display   = "flex";
-      document.getElementById("userPill").style.display   = "none";
-      document.getElementById("adminBtn").style.display   = "none";
-      document.getElementById("logoutBtn").style.display  = "none";
+      document.getElementById("loginBtn").style.display  = "flex";
+      document.getElementById("userPill").style.display  = "none";
+      document.getElementById("adminBtn").style.display  = "none";
+      document.getElementById("logoutBtn").style.display = "none";
     }
   } catch(e) { currentUser = null; }
 }
 
 function handleUserBtn() {
-  // Clicking the user pill shows a quick profile popup
+  // Clicking the user pill shows a quick profile toast
   if (currentUser) {
     showToast("👤 " + currentUser.username + " · " + currentUser.role, "default");
   } else {
     window.location.href = "https://zapshop-g8gt.onrender.com/auth.html";
   }
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.href = "https://zapshop-g8gt.onrender.com/auth.html";
+}
+
+function goAdmin() {
+  window.location.href = "https://zapshop-g8gt.onrender.com/admin.html";
+}
+
+// Auto-redirect if not logged in
+if (!localStorage.getItem("user")) {
+  window.location.href = "https://zapshop-g8gt.onrender.com/auth.html";
 }
 
 // ═══════════════════════════════════════════
@@ -827,54 +862,163 @@ function validateAll() {
 }
 
 // ═══════════════════════════════════════════
-// PLACE ORDER
+// OTP STATE
+// ═══════════════════════════════════════════
+let _pendingOrder = null;   // holds address/city/pincode/phone while OTP is open
+let _resendCountdown = null;
+
+// ═══════════════════════════════════════════
+// PLACE ORDER — now sends OTP first
 // ═══════════════════════════════════════════
 async function placeOrder() {
   if (!validateAll()) {
     showToast("⚠️ Please fix the errors above", "error");
     return;
   }
+  if (!currentUser) { showToast("❌ Please log in first", "error"); return; }
 
   const address = document.getElementById("addr-address").value.trim();
   const city    = document.getElementById("addr-city").value.trim();
   const pincode = document.getElementById("addr-pincode").value.trim();
   const phone   = document.getElementById("addr-phone").value.trim();
 
+  _pendingOrder = { address, city, pincode, phone };
+
   const btn = document.getElementById("placeOrderBtn");
   btn.disabled = true;
-  btn.innerHTML = `<span class="spinner"></span> Placing Order...`;
+  btn.innerHTML = `<span class="spinner"></span> Sending OTP...`;
 
   try {
-    const res = await fetch(BASE + "/order/place", {
+    const res = await fetch(BASE + "/send-otp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: currentUser.id, address, city, pincode, phone })
+      body: JSON.stringify({ phone, user_id: currentUser.id })
     });
     const data = await res.json();
     if (!res.ok) {
-      showToast("❌ " + (data.error || "Order failed. Try again."), "error");
+      showToast("❌ " + (data.error || "Could not send OTP"), "error");
       return;
     }
+    // Show OTP panel
+    document.getElementById("otpPhoneDisplay").textContent = "+91 " + phone;
+    document.getElementById("otp-input").value = "";
+    document.getElementById("err-otp").classList.remove("show");
+    showPanel("otp");
+    startResendTimer();
+    if (data.otp_preview) {
+      // DEV MODE — FAST2SMS_KEY not set on Render
+      document.getElementById("otp-input").value = data.otp_preview;
+      showToast("🔧 Dev OTP: " + data.otp_preview, "info", 10000);
+    } else {
+      showToast("📲 OTP sent to +91 " + phone, "success", 4000);
+    }
+    if (data.sms_error) console.error("SMS error:", data.sms_error);
+  } catch(e) {
+    showToast("❌ Network error. Check connection.", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = "🎉 Place Order";
+  }
+}
 
-    // Clear form
+function startResendTimer(seconds = 30) {
+  const timerEl = document.getElementById("resendTimer");
+  const resendEl = document.getElementById("resendBtn");
+  resendEl.style.display = "none";
+  let t = seconds;
+  timerEl.textContent = `Resend in ${t}s`;
+  if (_resendCountdown) clearInterval(_resendCountdown);
+  _resendCountdown = setInterval(() => {
+    t--;
+    if (t <= 0) {
+      clearInterval(_resendCountdown);
+      timerEl.textContent = "";
+      resendEl.style.display = "inline";
+    } else {
+      timerEl.textContent = `Resend in ${t}s`;
+    }
+  }, 1000);
+}
+
+async function resendOtp() {
+  if (!_pendingOrder) return;
+  const btn = document.getElementById("resendBtn");
+  btn.disabled = true;
+  try {
+    const res = await fetch(BASE + "/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: _pendingOrder.phone, user_id: currentUser.id })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast("📲 New OTP sent!", "success");
+      if (data.otp_preview) {
+        document.getElementById("otp-input").value = data.otp_preview;
+        showToast("🔧 Dev OTP: " + data.otp_preview, "info", 10000);
+      } else {
+        showToast("📲 New OTP sent to your phone", "success", 4000);
+      }
+      startResendTimer();
+    } else {
+      showToast("❌ " + (data.error || "Failed to resend"), "error");
+    }
+  } catch(e) {
+    showToast("❌ Network error", "error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function verifyOtpAndOrder() {
+  const otp = document.getElementById("otp-input").value.replace(/\s/g,'').slice(0,6);
+  const errEl = document.getElementById("err-otp");
+  if (otp.length !== 6) {
+    errEl.classList.add("show");
+    errEl.textContent = "Enter the 6-digit OTP";
+    return;
+  }
+  errEl.classList.remove("show");
+
+  const btn = document.getElementById("verifyOtpBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> Verifying...`;
+
+  try {
+    const res = await fetch(BASE + "/verify-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: currentUser.id,
+        otp,
+        ..._pendingOrder
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || "Incorrect OTP. Try again.";
+      errEl.classList.add("show");
+      document.getElementById("otp-input").value = "";
+      return;
+    }
+    // SUCCESS
+    if (_resendCountdown) clearInterval(_resendCountdown);
+    _pendingOrder = null;
     ["addr-address","addr-city","addr-pincode","addr-phone"].forEach(id => {
       const el = document.getElementById(id);
-      el.value = "";
-      el.classList.remove("ok","error");
+      if (el) { el.value = ""; el.classList.remove("ok","error"); }
     });
     document.querySelectorAll(".of-err").forEach(e => e.classList.remove("show"));
-
-    // Show success screen
     document.getElementById("successOrderId").textContent = "Order #" + data.order_id;
     document.getElementById("successTotal").textContent   = inr(data.total);
     showPanel("success");
     syncBadge();
-
   } catch(e) {
-    showToast("❌ Order failed. Check your connection.", "error");
+    console.error("verify-otp error:", e);
+    showToast("❌ " + (e.message || "Network error. Try again."), "error", 5000);
   } finally {
     btn.disabled = false;
-    btn.innerHTML = "🎉 Place Order";
+    btn.innerHTML = "✅ Verify &amp; Place Order";
   }
 }
 
@@ -930,33 +1074,33 @@ function showToast(msg, type = "default") {
 // ═══════════════════════════════════════════
 // START
 // ═══════════════════════════════════════════
-// FIX 3: Logout
+
 function logout() {
   localStorage.clear();
   window.location.href = "https://zapshop-g8gt.onrender.com/auth.html";
 }
 
-// FIX 5: Go to admin
 function goAdmin() {
   window.location.href = "https://zapshop-g8gt.onrender.com/admin.html";
 }
 
-// FIX 4+7: On load — show admin btn, guard route
-(function onLoadCheck() {
+// Route guard — setTimeout gives WebView time to load localStorage
+setTimeout(() => {
   const stored = localStorage.getItem("zap_user");
+
   if (!stored) {
     window.location.href = "https://zapshop-g8gt.onrender.com/auth.html";
     return;
   }
+
   try {
     const u = JSON.parse(stored);
-    // loadUser() handles all UI — this guard just protects the route
     if (!u || !u.id) throw new Error("invalid");
-  } catch(e) {
+  } catch (e) {
     localStorage.clear();
     window.location.href = "https://zapshop-g8gt.onrender.com/auth.html";
   }
-})();
+}, 300); // 300ms delay fixes APK WebView localStorage timing issue
 
 init();
 </script>

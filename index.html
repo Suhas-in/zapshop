@@ -543,10 +543,7 @@ function goAdmin() {
   window.location.href = "https://zapshop-g8gt.onrender.com/admin.html";
 }
 
-// Auto-redirect if not logged in
-if (!localStorage.getItem("zap_user")) {
-  window.location.href = "https://zapshop-g8gt.onrender.com/auth.html";
-}
+// Auto-redirect handled by route guard below (setTimeout gives localStorage time to load)
 
 // ═══════════════════════════════════════════
 // INIT

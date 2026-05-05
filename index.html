@@ -411,8 +411,9 @@ nav{position:sticky;top:0;z-index:100;background:var(--dark);border-bottom:3px s
         <span id="otpPhoneDisplay" style="color:var(--dark);font-weight:900"></span>
       </p>
       <div class="of-group" style="width:100%;max-width:280px">
-        <input class="of-input" id="otp-input" placeholder="Enter 6-digit OTP"
-          maxlength="6" inputmode="numeric" style="text-align:center;font-size:1.4rem;letter-spacing:.4rem;font-weight:900"
+        <input class="of-input" id="otp-input" type="text" placeholder="- - - - - -"
+          maxlength="6" inputmode="numeric" autocomplete="one-time-code"
+          style="text-align:center;font-size:1.6rem;letter-spacing:.5rem;font-weight:900;color:#111 !important;background:#fff !important;-webkit-text-fill-color:#111 !important;caret-color:#111"
           oninput="this.value=this.value.replace(/\D/g,\'\')">
         <div class="of-err" id="err-otp" style="text-align:center">Incorrect OTP. Try again.</div>
       </div>
@@ -752,8 +753,8 @@ function showPanel(name) {
   });
   const target = document.getElementById("panel-" + name);
   if (target) {
-    target.style.display = ["cart","checkout","success"].includes(name) ? "flex" : "block";
-    if (["cart","checkout","success"].includes(name)) target.style.flexDirection = "column";
+    target.style.display = "flex";
+    target.style.flexDirection = "column";
   }
 }
 

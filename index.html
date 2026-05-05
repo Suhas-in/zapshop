@@ -864,11 +864,12 @@ function validateAll() {
 // ═══════════════════════════════════════════
 let _pendingOrder = null;   // holds address/city/pincode/phone while OTP is open
 let _resendCountdown = null;
+let _generatedOTP = null;   // local OTP — no SMS needed
 
 // ═══════════════════════════════════════════
 // PLACE ORDER — now sends OTP first
 // ═══════════════════════════════════════════
-async function placeOrder() {
+function placeOrder() {
   if (!validateAll()) {
     showToast("⚠️ Please fix the errors above", "error");
     return;
@@ -882,41 +883,17 @@ async function placeOrder() {
 
   _pendingOrder = { address, city, pincode, phone };
 
-  const btn = document.getElementById("placeOrderBtn");
-  btn.disabled = true;
-  btn.innerHTML = `<span class="spinner"></span> Sending OTP...`;
+  // ── LOCAL OTP — no SMS, instant ──
+  _generatedOTP = String(Math.floor(100000 + Math.random() * 900000));
 
-  try {
-    const res = await fetch(BASE + "/send-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, user_id: currentUser.id })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      showToast("❌ " + (data.error || "Could not send OTP"), "error");
-      return;
-    }
-    // Show OTP panel
-    document.getElementById("otpPhoneDisplay").textContent = "+91 " + phone;
-    document.getElementById("otp-input").value = "";
-    document.getElementById("err-otp").classList.remove("show");
-    showPanel("otp");
-    startResendTimer();
-    if (data.otp_preview) {
-      // DEV MODE — FAST2SMS_KEY not set on Render
-      document.getElementById("otp-input").value = data.otp_preview;
-      showToast("🔧 Dev OTP: " + data.otp_preview, "info", 10000);
-    } else {
-      showToast("📲 OTP sent to +91 " + phone, "success", 4000);
-    }
-    if (data.sms_error) console.error("SMS error:", data.sms_error);
-  } catch(e) {
-    showToast("❌ Network error. Check connection.", "error");
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = "🎉 Place Order";
-  }
+  document.getElementById("otpPhoneDisplay").textContent = "+91 " + phone;
+  document.getElementById("otp-input").value = "";
+  document.getElementById("err-otp").classList.remove("show");
+  showPanel("otp");
+  startResendTimer();
+
+  // Show OTP instantly in a toast
+  showToast("🔐 Your OTP is: " + _generatedOTP, "info", 15000);
 }
 
 function startResendTimer(seconds = 30) {
@@ -938,34 +915,13 @@ function startResendTimer(seconds = 30) {
   }, 1000);
 }
 
-async function resendOtp() {
+function resendOtp() {
   if (!_pendingOrder) return;
-  const btn = document.getElementById("resendBtn");
-  btn.disabled = true;
-  try {
-    const res = await fetch(BASE + "/send-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: _pendingOrder.phone, user_id: currentUser.id })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      showToast("📲 New OTP sent!", "success");
-      if (data.otp_preview) {
-        document.getElementById("otp-input").value = data.otp_preview;
-        showToast("🔧 Dev OTP: " + data.otp_preview, "info", 10000);
-      } else {
-        showToast("📲 New OTP sent to your phone", "success", 4000);
-      }
-      startResendTimer();
-    } else {
-      showToast("❌ " + (data.error || "Failed to resend"), "error");
-    }
-  } catch(e) {
-    showToast("❌ Network error", "error");
-  } finally {
-    btn.disabled = false;
-  }
+  // ── LOCAL OTP — regenerate instantly ──
+  _generatedOTP = String(Math.floor(100000 + Math.random() * 900000));
+  document.getElementById("otp-input").value = "";
+  startResendTimer();
+  showToast("🔐 New OTP is: " + _generatedOTP, "info", 15000);
 }
 
 async function verifyOtpAndOrder() {
@@ -978,30 +934,37 @@ async function verifyOtpAndOrder() {
   }
   errEl.classList.remove("show");
 
+  // ── LOCAL OTP CHECK ──
+  if (otp !== _generatedOTP) {
+    errEl.textContent = "Incorrect OTP. Try again.";
+    errEl.classList.add("show");
+    document.getElementById("otp-input").value = "";
+    return;
+  }
+
   const btn = document.getElementById("verifyOtpBtn");
   btn.disabled = true;
-  btn.innerHTML = `<span class="spinner"></span> Verifying...`;
+  btn.innerHTML = `<span class="spinner"></span> Placing Order...`;
 
   try {
-    const res = await fetch(BASE + "/verify-otp", {
+    // OTP verified locally — now place the order directly
+    const res = await fetch(BASE + "/order/place", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         user_id: currentUser.id,
-        otp,
         ..._pendingOrder
       })
     });
     const data = await res.json();
     if (!res.ok) {
-      errEl.textContent = data.error || "Incorrect OTP. Try again.";
-      errEl.classList.add("show");
-      document.getElementById("otp-input").value = "";
+      showToast("❌ " + (data.error || "Order failed. Try again."), "error");
       return;
     }
     // SUCCESS
     if (_resendCountdown) clearInterval(_resendCountdown);
     _pendingOrder = null;
+    _generatedOTP = null;
     ["addr-address","addr-city","addr-pincode","addr-phone"].forEach(id => {
       const el = document.getElementById(id);
       if (el) { el.value = ""; el.classList.remove("ok","error"); }
@@ -1012,7 +975,7 @@ async function verifyOtpAndOrder() {
     showPanel("success");
     syncBadge();
   } catch(e) {
-    console.error("verify-otp error:", e);
+    console.error("place-order error:", e);
     showToast("❌ " + (e.message || "Network error. Try again."), "error", 5000);
   } finally {
     btn.disabled = false;

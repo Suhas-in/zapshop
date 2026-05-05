@@ -515,9 +515,9 @@ async function doLogin() {
 
     setTimeout(() => {
       if (user.role === "admin") {
-        window.location.href = "https://zapshop-s3o7.onrender.com/admin";
+        window.location.href = "https://zapshop-g8gt.onrender.com/admin.html";
       } else {
-        window.location.href = "https://zapshop-s3o7.onrender.com";
+        window.location.href = "https://zapshop-g8gt.onrender.com";
       }
     }, 800);
   } catch(e) {
@@ -550,7 +550,7 @@ async function doSignup() {
 
     localStorage.setItem("zap_user", JSON.stringify(data.user));
     showMsg("🎉 Account created! Redirecting...", "success");
-    setTimeout(() => window.location.href = "https://zapshop-s3o7.onrender.com", 1000);
+    setTimeout(() => window.location.href = "https://zapshop-g8gt.onrender.com", 1000);
   } catch(e) {
     showMsg("⚠️ Cannot connect to server. Is app.py running?", "error");
   } finally {
@@ -571,8 +571,8 @@ if (saved) {
   try {
     const u = JSON.parse(saved);
     if (u && u.id) window.location.href = u.role === "admin"
-      ? "https://zapshop-s3o7.onrender.com/admin"
-      : "https://zapshop-s3o7.onrender.com";
+      ? "https://zapshop-g8gt.onrender.com/admin.html"
+      : "https://zapshop-g8gt.onrender.com";
   } catch(e) { localStorage.removeItem("zap_user"); }
 }
 </script>

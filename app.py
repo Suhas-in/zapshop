@@ -28,12 +28,34 @@ def init_db():
     conn.execute("""CREATE TABLE IF NOT EXISTS cart(
         id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
         product_id INTEGER NOT NULL, quantity INTEGER DEFAULT 1)""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS orders(
-        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
-        user_name TEXT, user_email TEXT, items TEXT NOT NULL, total INTEGER NOT NULL,
-        address TEXT NOT NULL, city TEXT NOT NULL, pincode TEXT NOT NULL,
-        phone TEXT NOT NULL, status TEXT DEFAULT 'pending',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP)""")
+    conn.execute("""
+CREATE TABLE IF NOT EXISTS orders(
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    user_id INTEGER,
+
+    user_name TEXT,
+
+    user_email TEXT,
+
+    items TEXT,
+
+    total INTEGER,
+
+    address TEXT,
+
+    city TEXT,
+
+    pincode TEXT,
+
+    phone TEXT,
+
+    status TEXT DEFAULT 'Pending',
+
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+""")
     conn.execute("""CREATE TABLE IF NOT EXISTS otp_sessions(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT NOT NULL UNIQUE,
